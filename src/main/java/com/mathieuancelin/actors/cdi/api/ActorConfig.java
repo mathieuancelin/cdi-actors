@@ -10,13 +10,17 @@ public @interface ActorConfig {
     
     public static final String DEFAULT_VALUE = "#########";
     
-    String value();
+    String value() default DEFAULT_VALUE;
     
     Class<? extends RouterConfiguration> withRouter() default NotRouterConfig.class;
     
     public static class NotRouterConfig implements RouterConfiguration {
 
         public RouterConfig getConfig() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        public String routerName() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
     }

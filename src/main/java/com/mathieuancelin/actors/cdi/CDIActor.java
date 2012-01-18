@@ -5,8 +5,11 @@ import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.FromActorEngine;
 import com.mathieuancelin.actors.cdi.api.RouterConfiguration;
 import com.mathieuancelin.actors.cdi.api.ToActor;
+import java.util.HashMap;
+import java.util.Map;
 import javax.enterprise.event.Event;
 import javax.enterprise.inject.Any;
+import javax.enterprise.inject.Instance;
 import javax.enterprise.util.AnnotationLiteral;
 import javax.inject.Inject;
 import scala.Option;
@@ -15,17 +18,24 @@ public abstract class CDIActor {
     
     @Inject @Any Event<Object> events;
     
+    @Inject @Any Instance<Object> instances;
+    
     @Inject CDIActors actors;
     
     private DelegateActor delegate;
     
     private ActorRef delegateRef;
         
-    private final String name;
+    private String name ;
     
     private RouterConfiguration config;
+    
+    private Class<?> clazz;
+    
+    final static Map<String, Boolean> routers = new HashMap<String, Boolean>();
 
     public CDIActor() {
+        this.clazz = getClass();
         if (getClass().isAnnotationPresent(ActorConfig.class)) {
             name = getClass().getAnnotation(ActorConfig.class).value();
             if (!getClass().getAnnotation(ActorConfig.class).withRouter().equals(ActorConfig.NotRouterConfig.class)) {
@@ -35,9 +45,12 @@ public abstract class CDIActor {
                    ex.printStackTrace();
                 }
             }
-        } else {
+            if (name.equals(ActorConfig.DEFAULT_VALUE)) {
+                name = null;
+            }
+        } /**else {
             name = getClass().getName();
-        }
+        }**/
     }
     
     void createAndRegisterDelegateActor() {
@@ -49,9 +62,29 @@ public abstract class CDIActor {
             }
         });
         if (config != null) {
-            p = p.withRouter(config.getConfig());
+            boolean routerCreated = routers.containsKey(config.routerName()) ? true : false; 
+            if(!routerCreated) {
+                System.out.println("router not created for " + config.routerName());
+                System.out.println(routers);
+                routers.put(config.routerName(), true);
+                System.out.println("put " + config.routerName());
+                p = new Props(new UntypedActorFactory() {
+                    public Actor create() {
+                        CDIActor actor = (CDIActor) instances.select(clazz).get();
+                        actor.start();
+                        return actor.getDelegate();
+                    }
+                });
+                p = p.withRouter(config.getConfig());
+                delegateRef = actors.getSystem().actorOf(p, config.routerName());
+                return;
+            }
         }
-        delegateRef = actors.getSystem().actorOf(p, name);
+        if (name != null) {
+            delegateRef = actors.getSystem().actorOf(p, name);
+        } else {
+            delegateRef = actors.getSystem().actorOf(p);
+        }
     }
     
     public ActorContext context() {
@@ -70,6 +103,9 @@ public abstract class CDIActor {
     }
 
     public void postStop() {
+        if (config != null) {
+            routers.remove(config.routerName());
+        }
     }
 
     public void preRestart(Throwable reason, Option<Object> message) {

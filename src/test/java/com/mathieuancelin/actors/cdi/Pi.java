@@ -44,7 +44,7 @@ public class Pi {
             this.value = value;
         }
     }
-
+        
     public static class Worker extends UntypedActor {
 
         private double calculatePiFor(int start, int nrOfElements) {
@@ -79,7 +79,6 @@ public class Pi {
         public void listenCalculate(@Observes Calculate message) {
             this.nrOfMessages = message.nrOfMessages;
             this.nrOfElements = message.nrOfElements;
-            System.out.println(message);
             router = context().actorOf(
                 new Props(Worker.class).withRouter(new RoundRobinRouter(message.nrOfWorkers)), "pi");
             for (int start = 0; start < nrOfMessages; start++) {
