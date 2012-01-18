@@ -1,8 +1,14 @@
 package com.mathieuancelin.actors.cdi;
 
+import akka.actor.Actor;
 import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.actor.UntypedActorFactory;
 import akka.japi.Option;
+import akka.routing.RouterConfig;
 import com.mathieuancelin.actors.cdi.ActorProducers.ActorMessage;
+import com.mathieuancelin.actors.cdi.api.ActorConfig;
+import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
 import com.mathieuancelin.actors.cdi.api.To;
 import java.lang.annotation.Annotation;
 import java.util.Set;
@@ -56,6 +62,23 @@ public class CDIActors {
     public void start() {
         for (Class<? extends CDIActor> clazz : ActorsExtension.classes) {
             instances.select(clazz).get().start();
+        }
+        for (Class<? extends RouterConfigurator> clazz : ActorsExtension.routers) {
+            try {
+                final RouterConfigurator config = (RouterConfigurator) clazz.newInstance();
+                getSystem().actorOf(new Props(new UntypedActorFactory() {
+
+                    public Actor create() {
+                        CDIActor actor = instances.select(config.actorOf()).get();
+                        actor.start();
+                        return actor.getDelegate();
+                    }
+                    
+                }).withRouter(config.getConfig()), config.routerName());
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         }
     }
 }

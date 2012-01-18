@@ -3,11 +3,13 @@ package com.mathieuancelin.actors.cdi;
 import akka.actor.*;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.FromActorEngine;
-import com.mathieuancelin.actors.cdi.api.RouterConfiguration;
 import com.mathieuancelin.actors.cdi.api.ToActor;
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.Object;
+import java.lang.reflect.Method;
+import java.util.HashSet;
+import java.util.Set;
 import javax.enterprise.event.Event;
+import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Instance;
 import javax.enterprise.util.AnnotationLiteral;
@@ -27,30 +29,26 @@ public abstract class CDIActor {
     private ActorRef delegateRef;
         
     private String name ;
-    
-    private RouterConfiguration config;
-    
+        
     private Class<?> clazz;
     
-    final static Map<String, Boolean> routers = new HashMap<String, Boolean>();
+    private final Set<Method> observers = new HashSet<Method>();
 
     public CDIActor() {
         this.clazz = getClass();
-        if (getClass().isAnnotationPresent(ActorConfig.class)) {
-            name = getClass().getAnnotation(ActorConfig.class).value();
-            if (!getClass().getAnnotation(ActorConfig.class).withRouter().equals(ActorConfig.NotRouterConfig.class)) {
-                try {
-                    config = (RouterConfiguration) getClass().getAnnotation(ActorConfig.class).withRouter().newInstance();
-                } catch (Exception ex) {
-                   ex.printStackTrace();
+        for (Method m : clazz.getDeclaredMethods()) {
+            if (m.getParameterTypes().length == 1 && m.getParameterAnnotations()[0].length >= 1) {
+                if (m.getParameterAnnotations()[0][0].annotationType().equals(Observes.class)) {
+                    observers.add(m);
                 }
             }
+        }
+        if (getClass().isAnnotationPresent(ActorConfig.class)) {
+            name = getClass().getAnnotation(ActorConfig.class).value();
             if (name.equals(ActorConfig.DEFAULT_VALUE)) {
                 name = null;
             }
-        } /**else {
-            name = getClass().getName();
-        }**/
+        }
     }
     
     void createAndRegisterDelegateActor() {
@@ -61,25 +59,6 @@ public abstract class CDIActor {
                 return delegate;
             }
         });
-        if (config != null) {
-            boolean routerCreated = routers.containsKey(config.routerName()) ? true : false; 
-            if(!routerCreated) {
-                System.out.println("router not created for " + config.routerName());
-                System.out.println(routers);
-                routers.put(config.routerName(), true);
-                System.out.println("put " + config.routerName());
-                p = new Props(new UntypedActorFactory() {
-                    public Actor create() {
-                        CDIActor actor = (CDIActor) instances.select(clazz).get();
-                        actor.start();
-                        return actor.getDelegate();
-                    }
-                });
-                p = p.withRouter(config.getConfig());
-                delegateRef = actors.getSystem().actorOf(p, config.routerName());
-                return;
-            }
-        }
         if (name != null) {
             delegateRef = actors.getSystem().actorOf(p, name);
         } else {
@@ -103,9 +82,6 @@ public abstract class CDIActor {
     }
 
     public void postStop() {
-        if (config != null) {
-            routers.remove(config.routerName());
-        }
     }
 
     public void preRestart(Throwable reason, Option<Object> message) {
@@ -120,7 +96,7 @@ public abstract class CDIActor {
     
     void start() {
         createAndRegisterDelegateActor();
-        System.out.println("Starting " + name + " (available at " + delegateRef.path().toString() + ")");
+        System.out.println("Starting " + (name == null ? "undefined" : name) + " (available at " + delegateRef.path().toString() + ")");
     }
 
     public static class DelegateActor extends UntypedActor {
@@ -133,17 +109,31 @@ public abstract class CDIActor {
 
         public DelegateActor(Event<Object> events, String name, CDIActor actor) {
             this.events = events;
-            this.name = name;
+            if (name == null) {
+                this.name = "undefined";
+            } else {
+                this.name = name;
+            }
             this.actor = actor;
         }
 
         @Override
         public void onReceive(Object o) throws Exception {
-//            System.out.println("delegate actor for '" + name + "' received : " + o) ;
             Class clazz = o.getClass();
             events.select(new FromActorEngineAnnotation())
                     .select(new ToActorAnnotation(name))
                     .select(clazz).fire(get(o, clazz));
+            
+//            for (Method m : actor.observers) {
+//                if (m.getParameterTypes()[0].isAssignableFrom(clazz)) {
+//                    try {
+//                        m.setAccessible(true);
+//                        m.invoke(actor, o);
+//                    } catch (Throwable ex) {
+//                        ex.printStackTrace();
+//                    }
+//                }
+//            }            
         }  
 
         @Override

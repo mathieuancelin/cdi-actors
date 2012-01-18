@@ -2,6 +2,7 @@ package com.mathieuancelin.actors.cdi;
 
 import com.mathieuancelin.actors.cdi.CDIActor.FromActorEngineAnnotation;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
+import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
 import com.mathieuancelin.actors.cdi.api.SystemConfigurationEvent;
 import com.typesafe.config.Config;
 import java.util.HashSet;
@@ -14,6 +15,8 @@ import javax.enterprise.inject.spi.*;
 public class ActorsExtension implements Extension {
 
     static Set<Class<? extends CDIActor>> classes = new HashSet<Class<? extends CDIActor>>();
+    static Set<Class<? extends RouterConfigurator>> routers = new HashSet<Class<? extends RouterConfigurator>>();
+
     static String systemName = "default";
     static Config systemConfig;
     boolean enforceActorInjection = false;
@@ -58,9 +61,13 @@ public class ActorsExtension implements Extension {
             String name = beanClass.getName();
             if (beanClass.isAnnotationPresent(ActorConfig.class)) {
                 name = beanClass.getAnnotation(ActorConfig.class).value();
+                if (!beanClass.getAnnotation(ActorConfig.class).withRouter().equals(ActorConfig.NotRouterConfig.class)) {
+                    routers.add(beanClass.getAnnotation(ActorConfig.class).withRouter());
+                } else {
+                    classes.add(evt.getAnnotatedMethod().getDeclaringType().getJavaClass());
+                }
             }
             evt.getObserverMethod().getObservedQualifiers().add(new CDIActor.ToActorAnnotation(name));
-            classes.add(evt.getAnnotatedMethod().getDeclaringType().getJavaClass());
         }
     }
 

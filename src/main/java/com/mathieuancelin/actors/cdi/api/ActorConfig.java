@@ -1,6 +1,7 @@
 package com.mathieuancelin.actors.cdi.api;
 
 import akka.routing.RouterConfig;
+import com.mathieuancelin.actors.cdi.CDIActor;
 import java.lang.annotation.*;
 
 @Documented
@@ -12,15 +13,19 @@ public @interface ActorConfig {
     
     String value() default DEFAULT_VALUE;
     
-    Class<? extends RouterConfiguration> withRouter() default NotRouterConfig.class;
+    Class<? extends RouterConfigurator> withRouter() default NotRouterConfig.class;
     
-    public static class NotRouterConfig implements RouterConfiguration {
+    public static class NotRouterConfig implements RouterConfigurator {
 
         public RouterConfig getConfig() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
         public String routerName() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        public Class<? extends CDIActor> actorOf() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
     }
