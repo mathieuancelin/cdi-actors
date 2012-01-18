@@ -1,38 +1,49 @@
 package com.mathieuancelin.actors.cdi;
 
-import com.mathieuancelin.actors.cdi.api.Actor;
-import com.mathieuancelin.actors.cdi.api.FromActorEngine;
+import com.mathieuancelin.actors.cdi.CDIActor.FromActorEngineAnnotation;
+import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import java.util.HashSet;
 import java.util.Set;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.Extension;
+import javax.enterprise.inject.spi.ProcessAnnotatedType;
 import javax.enterprise.inject.spi.ProcessBean;
 import javax.enterprise.inject.spi.ProcessObserverMethod;
-import javax.enterprise.util.AnnotationLiteral;
 
 @ApplicationScoped
 public class ActorsExtension implements Extension {
-    
-    public static Set<Class<?>> classes = new HashSet<Class<?>>();
-    
+
+    public static Set<Class<? extends CDIActor>> classes = new HashSet<Class<? extends CDIActor>>();
+
     public void observesListeners(@Observes ProcessObserverMethod evt) {
-        if (evt.getAnnotatedMethod().getDeclaringType().getJavaClass().isAnnotationPresent(Actor.class)) {
-//            System.out.println("class " + evt.getAnnotatedMethod().getDeclaringType().getJavaClass().getName() + " is an actor");
-//            System.out.println("qualifiers are : " + evt.getObserverMethod().getObservedQualifiers());
+        Class<?> beanClass = evt.getAnnotatedMethod().getDeclaringType().getJavaClass();
+        if (CDIActor.class.isAssignableFrom(beanClass)) {
             evt.getObserverMethod().getObservedQualifiers().add(new FromActorEngineAnnotation());
-//            System.out.println("qualifiers now are : " + evt.getObserverMethod().getObservedQualifiers());
+            String name = beanClass.getName();
+            if (beanClass.isAnnotationPresent(ActorConfig.class)) {
+                name = beanClass.getAnnotation(ActorConfig.class).value();
+            }
+            evt.getObserverMethod().getObservedQualifiers().add(new CDIActor.ToActorAnnotation(name));
             classes.add(evt.getAnnotatedMethod().getDeclaringType().getJavaClass());
         }
     }
+
+    public void observesBeans(@Observes ProcessBean evt) {
+        Class<?> beanClass = evt.getBean().getBeanClass();
+        if (CDIActor.class.isAssignableFrom(beanClass)) {
+            String name = beanClass.getName();
+            if (beanClass.isAnnotationPresent(ActorConfig.class)) {
+                name = beanClass.getAnnotation(ActorConfig.class).value();
+            }
+            System.out.println("Actor '" + name + "' found @ " + evt.getBean().getBeanClass());
+        }
+    }
     
-//    public void observesBeans(@Observes ProcessBean evt) {
-////        if (evt.getBean().getBeanClass().isAnnotationPresent(Actor.class)) {
-////            classes.add(evt.getBean().getBeanClass());
-////        }
-//        System.out.println("bean @ " + evt.getBean().getBeanClass());
-//    }
-    
-    public static class FromActorEngineAnnotation extends AnnotationLiteral<FromActorEngine>
-                                     implements FromActorEngine {}
+    public void observesAnnotatedType(@Observes ProcessAnnotatedType evt) {
+        Class<?> beanClass = evt.getAnnotatedType().getJavaClass();
+        if (beanClass.getName().startsWith("akka.")) {
+            evt.veto();
+        }
+    }
 }

@@ -1,12 +1,14 @@
 package com.mathieuancelin.actors.cdi.api;
 
+import akka.actor.ActorRef;
 import java.lang.annotation.Annotation;
-import javax.enterprise.event.Event;
 import javax.enterprise.util.TypeLiteral;
 
 public interface ActorEvent<T> {
 
    public void fire(T event);
+   
+   public void fire(T event, ActorRef from);
 
    public ActorEvent<T> select(Annotation... qualifiers);
    
