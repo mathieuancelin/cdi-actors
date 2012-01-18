@@ -21,7 +21,11 @@ public class CDIActors {
     private final ActorSystem system;
         
     public CDIActors() {
-        this.system = ActorSystem.create();
+        if (ActorsExtension.systemConfig == null) {
+            this.system = ActorSystem.create(ActorsExtension.systemName);
+        } else {
+            this.system = ActorSystem.create(ActorsExtension.systemName, ActorsExtension.systemConfig);
+        }
     }
 
     ActorSystem getSystem() {
