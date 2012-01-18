@@ -96,7 +96,8 @@ public abstract class CDIActor {
     
     void start() {
         createAndRegisterDelegateActor();
-        System.out.println("Starting " + (name == null ? "undefined" : name) + " (available at " + delegateRef.path().toString() + ")");
+        System.out.println("Starting " + (name == null ? "undefined" : name) 
+                + " (available at " + delegateRef.path().toString() + ")");
     }
 
     public static class DelegateActor extends UntypedActor {
@@ -120,20 +121,21 @@ public abstract class CDIActor {
         @Override
         public void onReceive(Object o) throws Exception {
             Class clazz = o.getClass();
-            events.select(new FromActorEngineAnnotation())
-                    .select(new ToActorAnnotation(name))
-                    .select(clazz).fire(get(o, clazz));
+//            events.select(new FromActorEngineAnnotation())
+//                    .select(new ToActorAnnotation(name))
+//                    .select(clazz).fire(get(o, clazz));
             
-//            for (Method m : actor.observers) {
-//                if (m.getParameterTypes()[0].isAssignableFrom(clazz)) {
-//                    try {
-//                        m.setAccessible(true);
-//                        m.invoke(actor, o);
-//                    } catch (Throwable ex) {
-//                        ex.printStackTrace();
-//                    }
-//                }
-//            }            
+            // NASTY WORKAROUND !!!!!
+            for (Method m : actor.observers) {
+                if (m.getParameterTypes()[0].isAssignableFrom(clazz)) {
+                    try {
+                        m.setAccessible(true);
+                        m.invoke(actor, o);
+                    } catch (Throwable ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }            
         }  
 
         @Override

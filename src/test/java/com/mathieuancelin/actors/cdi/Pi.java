@@ -1,12 +1,10 @@
 package com.mathieuancelin.actors.cdi;
 
-import akka.actor.Props;
 import akka.routing.RoundRobinRouter;
 import akka.routing.RouterConfig;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.ActorEvent;
 import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
-import com.mathieuancelin.actors.cdi.api.SystemConfigurationEvent;
 import com.mathieuancelin.actors.cdi.api.To;
 import java.util.concurrent.CountDownLatch;
 import javax.enterprise.context.ApplicationScoped;
@@ -28,7 +26,10 @@ public class Pi {
         }
         @Override
         public String toString() {
-            return "Calculate{" + "nrOfWorkers=" + nrOfWorkers + ", nrOfElements=" + nrOfElements + ", nrOfMessages=" + nrOfMessages + '}';
+            return "Calculate{" 
+                    + "nrOfWorkers=" + nrOfWorkers 
+                    + ", nrOfElements=" + nrOfElements 
+                    + ", nrOfMessages=" + nrOfMessages + '}';
         }
     }
 
@@ -47,30 +48,11 @@ public class Pi {
             this.value = value;
         }
     }
-        
-//    public static class Worker extends UntypedActor {
-//
-//        private double calculatePiFor(int start, int nrOfElements) {
-//            double acc = 0.0;
-//            for (int i = start * nrOfElements; i <= ((start + 1) * nrOfElements - 1); i++) {
-//                acc += 4.0 * (1 - (i % 2) * 2) / (2 * i + 1);
-//            }
-//            return acc;
-//        }
-//
-//        public void onReceive(Object message) {
-//            if (message instanceof Work) {
-//                Work work = (Work) message;
-//                double result = calculatePiFor(work.start, work.nrOfElements);
-//                getSender().tell(new Result(result));
-//            } else {
-//                throw new IllegalArgumentException("Unknown message [" + message + "]");
-//            }
-//        }
-//    }
     
     @ActorConfig(withRouter=RouterConf.class)
     public static class Worker extends CDIActor {
+        
+        @Inject @To("/user/master") ActorEvent<Result> master;
 
         private double calculatePiFor(int start, int nrOfElements) {
             double acc = 0.0;
@@ -82,7 +64,7 @@ public class Pi {
 
         public void onReceive(@Observes Work work) {
             double result = calculatePiFor(work.start, work.nrOfElements);
-            sender().tell(new Result(result));
+            master.fire(new Result(result), self());
         }
     }
     
@@ -110,19 +92,14 @@ public class Pi {
         private double pi;
         private int nrOfResults;
         private long start;
-//        private ActorRef router;
         
         @Inject @To("/user/pi") ActorEvent<Work> router;
 
         public void listenCalculate(@Observes Calculate message) {
             this.nrOfMessages = message.nrOfMessages;
             this.nrOfElements = message.nrOfElements;
-//            router = context().actorOf(
-//                new Props(Worker.class).withRouter(new RoundRobinRouter(message.nrOfWorkers)), "pi");
             for (int start = 0; start < nrOfMessages; start++) {
-//                router.tell(new Work(start, nrOfElements), self());
                 router.fire(new Work(start, nrOfElements), self());
-
             }
         }
         
@@ -147,10 +124,24 @@ public class Pi {
         }
     }
     
-    public static class Configurator {
-        public void config(@Observes SystemConfigurationEvent evt) {
-            System.out.println("config");
-            evt.enforceActorInjection(true);
-        }
-    }
+//    public static class Worker extends UntypedActor {
+//
+//        private double calculatePiFor(int start, int nrOfElements) {
+//            double acc = 0.0;
+//            for (int i = start * nrOfElements; i <= ((start + 1) * nrOfElements - 1); i++) {
+//                acc += 4.0 * (1 - (i % 2) * 2) / (2 * i + 1);
+//            }
+//            return acc;
+//        }
+//
+//        public void onReceive(Object message) {
+//            if (message instanceof Work) {
+//                Work work = (Work) message;
+//                double result = calculatePiFor(work.start, work.nrOfElements);
+//                getSender().tell(new Result(result));
+//            } else {
+//                throw new IllegalArgumentException("Unknown message [" + message + "]");
+//            }
+//        }
+//    }
 }
