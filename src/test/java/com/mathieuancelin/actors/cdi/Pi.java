@@ -81,7 +81,6 @@ public class Pi {
         public Class<? extends CDIActor> actorOf() {
             return Worker.class;
         }
-        
     }
     
     @ActorConfig("master")

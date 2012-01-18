@@ -4,7 +4,6 @@ import akka.actor.*;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.FromActorEngine;
 import com.mathieuancelin.actors.cdi.api.ToActor;
-import java.lang.Object;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
