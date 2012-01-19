@@ -7,6 +7,7 @@ import com.mathieuancelin.actors.cdi.api.ToActor;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
+import javax.annotation.PostConstruct;
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
@@ -50,7 +51,7 @@ public abstract class CDIActor {
         }
     }
     
-    void createAndRegisterDelegateActor() {
+    private void createAndRegisterDelegateActor() {
         final CDIActor act = this;
         Props p = new Props(new UntypedActorFactory() {
             public Actor create() {
@@ -58,7 +59,6 @@ public abstract class CDIActor {
                 return delegate;
             }
         });
-        System.out.println(getClass());
         if (name != null) {
             delegateRef = actors.getSystem().actorOf(p, name);
         } else {
@@ -78,22 +78,21 @@ public abstract class CDIActor {
         return delegate.getSender();
     }  
     
-    public void preStart() {
-    }
+    public void wakeUp() {}
+    
+    public void preStart() {}
 
-    public void postStop() {
-    }
+    public void postStop() {}
 
-    public void preRestart(Throwable reason, Option<Object> message) {
-    }
+    public void preRestart(Throwable reason, Option<Object> message) {}
 
-    public void postRestart(Throwable reason) {
-    }
+    public void postRestart(Throwable reason) {}
 
     Actor getDelegate() {
         return delegate;
     }
     
+    @PostConstruct
     void start() {
         createAndRegisterDelegateActor();
         System.out.println("Starting actor '" + (name == null ? "undefined" : name) 

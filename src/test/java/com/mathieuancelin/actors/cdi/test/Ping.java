@@ -1,4 +1,4 @@
-package com.mathieuancelin.actors.cdi;
+package com.mathieuancelin.actors.cdi.test;
 
 import akka.actor.ActorRef;
 import akka.actor.UntypedActor;

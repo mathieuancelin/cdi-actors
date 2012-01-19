@@ -67,7 +67,7 @@ public class CDIActors {
     @PostConstruct
     public void start() {
         for (Class<? extends CDIActor> clazz : ActorsExtension.classes) {
-            instances.select(clazz).get().start();
+            instances.select(clazz).get().wakeUp();//.start();
         }
         for (Class<? extends RouterConfigurator> clazz : ActorsExtension.routers) {
             try {
@@ -76,7 +76,7 @@ public class CDIActors {
 
                     public Actor create() {
                         CDIActor actor = instances.select(config.actorOf()).get();
-                        actor.start();
+                        actor.wakeUp();//.start();
                         return actor.getDelegate();
                     }
                     

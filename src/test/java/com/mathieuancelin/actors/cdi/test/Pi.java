@@ -1,7 +1,8 @@
-package com.mathieuancelin.actors.cdi;
+package com.mathieuancelin.actors.cdi.test;
 
 import akka.routing.RoundRobinRouter;
 import akka.routing.RouterConfig;
+import com.mathieuancelin.actors.cdi.CDIActor;
 import com.mathieuancelin.actors.cdi.CDIActor;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.ActorEvent;
