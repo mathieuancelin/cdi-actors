@@ -10,7 +10,7 @@ public class SystemConfigurationEvent {
     public SystemConfigurationEvent() {
     }
 
-    public SystemConfigurationEvent enforceActorInjection(boolean enforceActorInjection) {
+    public SystemConfigurationEvent errorOnActorInjection(boolean enforceActorInjection) {
         this.enforceActorInjection = enforceActorInjection;
         return this;
     }
@@ -33,7 +33,12 @@ public class SystemConfigurationEvent {
         return systemName;
     }
 
-    public boolean isEnforceActorInjection() {
+    public boolean errorOnActorInjection() {
         return enforceActorInjection;
+    }
+
+    @Override
+    public String toString() {
+        return "SystemConfigurationEvent{" + "systemName=" + systemName + ", systemConfig=" + systemConfig + ", enforceActorInjection=" + enforceActorInjection + '}';
     }
 }

@@ -1,4 +1,4 @@
-package com.mathieuancelin.actors.cdi.test;
+package com.mathieuancelin.actors.cdi;
 
 import com.mathieuancelin.actors.cdi.CDIActor;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;

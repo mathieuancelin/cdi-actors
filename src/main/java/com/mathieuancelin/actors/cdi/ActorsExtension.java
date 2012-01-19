@@ -16,41 +16,45 @@ public class ActorsExtension implements Extension {
 
     static Set<Class<? extends CDIActor>> classes = new HashSet<Class<? extends CDIActor>>();
     static Set<Class<? extends RouterConfigurator>> routers = new HashSet<Class<? extends RouterConfigurator>>();
-
     static String systemName = "default";
     static Config systemConfig;
     boolean enforceActorInjection = false;
     
     Set<InjectionPoint> ipts = new HashSet<InjectionPoint>();
-    
-    // TODO configuration on actor (router, etc ....)
-        
-    public void start(@Observes BeforeBeanDiscovery evt, BeanManager mngr) {
-        SystemConfigurationEvent config = new SystemConfigurationEvent();
-        mngr.fireEvent(config);
-        enforceActorInjection = config.isEnforceActorInjection();
-        systemConfig = config.systemConfig();
-        systemName = config.systemName();
+
+    public void observesInjectionTarget(@Observes ProcessInjectionTarget<?> evt) {
+        for (InjectionPoint ip : evt.getInjectionTarget().getInjectionPoints()) {
+            ipts.add(ip);
+        }
     }
     
-    public void observesInjectionTarget(@Observes ProcessInjectionTarget<?> evt) {
+    public void after(@Observes AfterDeploymentValidation evt, BeanManager mngr) {
+        SystemConfigurationEvent config = new SystemConfigurationEvent();
+        mngr.fireEvent(config);
+        enforceActorInjection = config.errorOnActorInjection();
+        systemConfig = config.systemConfig();
+        systemName = config.systemName();
         if (enforceActorInjection) {
-            for (InjectionPoint ip : evt.getInjectionTarget().getInjectionPoints()) {
-                ipts.add(ip);
+            for(InjectionPoint ip : ipts) {
+                for (Class<?> c : classes) {
+                    if (c.equals(ip.getType())) {
+                        evt.addDeploymentProblem(
+                            new DirectActorInjectionException("\nYou cannot inject an actor of type '" 
+                            + ip.getType() + "'\ndirectly in bean '" 
+                            + ip.getMember()
+                            + "'.\nUse '@Inject @To(\"/user/" 
+                            +  ((Class<?>) ip.getType()).getAnnotation(ActorConfig.class).value()
+                            + "\") ActorRef " + ip.getMember().getName() + ";' instead."));
+                    }
+                }
             }
         }
     }
     
-    public void after(@Observes AfterDeploymentValidation evt) {
-        if (enforceActorInjection) {
-            for(InjectionPoint ip : ipts) {
-                if (classes.contains(ip.getType())) {
-                    evt.addDeploymentProblem(new Throwable("You cannot inject an actor of type " 
-                            + ip.getType() + " direclyt in bean " 
-                            + ip.getBean().getBeanClass().getName() 
-                            + ". Use ActorRef injection."));
-                }
-            }
+    public static class DirectActorInjectionException extends RuntimeException {
+
+        public DirectActorInjectionException(String message) {
+            super(message);
         }
     }
     
@@ -66,8 +70,10 @@ public class ActorsExtension implements Extension {
                 } else {
                     classes.add(evt.getAnnotatedMethod().getDeclaringType().getJavaClass());
                 }
+                evt.getObserverMethod().getObservedQualifiers().add(new CDIActor.ToActorAnnotation(name));
+            } else {
+                evt.addDefinitionError(new Throwable("You have to annotate your actors with @ActorConfig"));
             }
-            evt.getObserverMethod().getObservedQualifiers().add(new CDIActor.ToActorAnnotation(name));
         }
     }
 
@@ -78,7 +84,7 @@ public class ActorsExtension implements Extension {
             if (beanClass.isAnnotationPresent(ActorConfig.class)) {
                 name = beanClass.getAnnotation(ActorConfig.class).value();
             }
-            System.out.println("Actor '" + name + "' found @ " + evt.getBean().getBeanClass());
+            //System.out.println("Actor '" + name + "' found @ " + evt.getBean().getBeanClass());
         }
     }
     

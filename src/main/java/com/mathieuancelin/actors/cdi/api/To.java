@@ -9,5 +9,9 @@ import javax.inject.Qualifier;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value={ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
 public @interface To {
-    @Nonbinding String value();
+    
+    public static final String DEFAULT = "################################";
+    
+    @Nonbinding String value() default DEFAULT;
+    @Nonbinding Class<?> actor() default Object.class;
 }

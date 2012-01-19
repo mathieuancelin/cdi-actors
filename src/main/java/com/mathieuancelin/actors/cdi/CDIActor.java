@@ -58,6 +58,7 @@ public abstract class CDIActor {
                 return delegate;
             }
         });
+        System.out.println(getClass());
         if (name != null) {
             delegateRef = actors.getSystem().actorOf(p, name);
         } else {
@@ -95,8 +96,8 @@ public abstract class CDIActor {
     
     void start() {
         createAndRegisterDelegateActor();
-        System.out.println("Starting " + (name == null ? "undefined" : name) 
-                + " (available at " + delegateRef.path().toString() + ")");
+        System.out.println("Starting actor '" + (name == null ? "undefined" : name) 
+                + "' (available at " + delegateRef.path().toString() + ")");
     }
 
     public static class DelegateActor extends UntypedActor {
@@ -124,7 +125,7 @@ public abstract class CDIActor {
 //                    .select(new ToActorAnnotation(name))
 //                    .select(clazz).fire(get(o, clazz));
             
-            // NASTY WORKAROUND !!!!!
+            // NASTY WORKAROUND. Not proud of it !!!!!
             for (Method m : actor.observers) {
                 if (m.getParameterTypes()[0].isAssignableFrom(clazz)) {
                     try {

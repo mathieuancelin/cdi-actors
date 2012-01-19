@@ -6,6 +6,7 @@ import akka.actor.Props;
 import akka.actor.UntypedActorFactory;
 import akka.japi.Option;
 import com.mathieuancelin.actors.cdi.ActorProducers.ActorMessage;
+import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
 import com.mathieuancelin.actors.cdi.api.To;
 import java.lang.annotation.Annotation;
@@ -32,14 +33,21 @@ public class CDIActors {
         }
     }
 
-    ActorSystem getSystem() {
+    public ActorSystem getSystem() {
         return system;
     }
     
     public void listen(@Observes ActorMessage message) {
         Option<To> maybeTo = getAnnotation(message.getTarget().getIp().getQualifiers(), To.class);
         for (To to : maybeTo) {
-            system.actorFor(to.value()).tell(message.getPayload(), message.getFrom());
+            if (!ActorProducers.validateToAnnotation(to)) {
+                throw new RuntimeException("You have to specify an actor name or actor class in To annotation");
+            }
+            if (ActorProducers.isToNamed(to)) {
+                system.actorFor(to.value()).tell(message.getPayload(), message.getFrom());
+            } else {
+                system.actorFor("/user/" + to.actor().getAnnotation(ActorConfig.class).value()).tell(message.getPayload(), message.getFrom());
+            }
         }
     }
     

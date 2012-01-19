@@ -1,12 +1,9 @@
-package com.mathieuancelin.actors.cdi.test;
+package com.mathieuancelin.actors.cdi;
 
 import akka.actor.ActorRef;
 import akka.actor.Extension;
-import com.mathieuancelin.actors.cdi.ActorProducers;
-import com.mathieuancelin.actors.cdi.ActorsExtension;
-import com.mathieuancelin.actors.cdi.CDIActors;
-import com.mathieuancelin.actors.cdi.test.Pi.Calculate;
-import com.mathieuancelin.actors.cdi.test.Pi.Master;
+import com.mathieuancelin.actors.cdi.Pi.Calculate;
+import com.mathieuancelin.actors.cdi.Pi.Master;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.ActorEvent;
 import com.mathieuancelin.actors.cdi.api.To;
@@ -39,8 +36,8 @@ public class CDIActorsTest {
     
     public static final CountDownLatch down = new CountDownLatch(20);
 
-    @Inject @To("/user/ping") ActorRef ping;
-//    @Inject @To(actor=Ping.class) ActorRef ping;
+//    @Inject @To("/user/ping") ActorRef ping;
+    @Inject @To(actor=CDIPing.class) ActorRef ping;
     
     @Inject CDIActors actors;
         
@@ -51,8 +48,8 @@ public class CDIActorsTest {
         Assert.assertEquals(down.getCount(), 0);
     }
     
-    @Inject @To("/user/master") ActorEvent<Calculate> master;
-//    @Inject @To(actor=Master.class) ActorEvent<Calculate> master;
+//    @Inject @To("/user/master") ActorEvent<Calculate> master;
+    @Inject @To(actor=Master.class) ActorEvent<Calculate> master;
 
     @Test
     public void testPi() throws Exception {

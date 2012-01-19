@@ -3,6 +3,7 @@ package com.mathieuancelin.actors.cdi;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.japi.Option;
+import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.ActorEvent;
 import com.mathieuancelin.actors.cdi.api.To;
 import java.lang.annotation.Annotation;
@@ -13,21 +14,40 @@ import javax.enterprise.util.TypeLiteral;
 
 public class ActorProducers {
     
+    public static boolean validateToAnnotation(To to) {
+        if (to.value().equals(To.DEFAULT) && to.actor().equals(Object.class)) {
+            return false;
+        }
+        return true;
+    }
+    
+    public static boolean isToNamed(To to) {
+        return !to.value().equals(To.DEFAULT);
+    }
+    
     @Produces
     ActorSystem getActorSystem(CDIActors actors) {
         return actors.getSystem();
     }
     
-    @Produces @To("dummyValueIgnoredByCDI")
+    @Produces @To("dummy")
     ActorRef getActorRef(InjectionPoint ip, CDIActors actors) {
         Option<To> maybeTo = CDIActors.getAnnotation(ip.getQualifiers(), To.class);
         for (To to : maybeTo) {
-            return actors.getSystem().actorFor(to.value());
+            if (!validateToAnnotation(to)) {
+                throw new RuntimeException("You have to specify an actor name or actor class in To annotation");
+            }
+            if (isToNamed(to)) {
+                return actors.getSystem().actorFor(to.value());
+            } else {
+                String val = to.actor().getAnnotation(ActorConfig.class).value();
+                return actors.getSystem().actorFor("/user/" + val);
+            }
         }
         throw new RuntimeException("Error, no To");
     } 
     
-    @Produces @To("dummyValueIgnoredByCDI")
+    @Produces @To("dummy")
     <T> ActorEvent<T> getEvent(InjectionPoint ip, final Event<Object> evt) {
         Event e = evt;
         if (!ip.getQualifiers().isEmpty()) {
