@@ -1,10 +1,12 @@
-package com.mathieuancelin.actors.cdi;
+package com.mathieuancelin.actors.cdi.test;
 
 import akka.routing.RoundRobinRouter;
 import akka.routing.RouterConfig;
+import com.mathieuancelin.actors.cdi.CDIActor;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.ActorEvent;
 import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
+import com.mathieuancelin.actors.cdi.api.SystemConfigurationEvent;
 import com.mathieuancelin.actors.cdi.api.To;
 import java.util.concurrent.CountDownLatch;
 import javax.enterprise.context.ApplicationScoped;
@@ -49,7 +51,7 @@ public class Pi {
         }
     }
     
-    @ActorConfig(withRouter=RouterConf.class)
+    @ActorConfig(withRouter=PiAkkaConfigurator.class)
     public static class Worker extends CDIActor {
         
         @Inject @To("/user/master") ActorEvent<Result> master;
@@ -68,7 +70,8 @@ public class Pi {
         }
     }
     
-    public static class RouterConf implements RouterConfigurator {
+    @ApplicationScoped
+    public static class PiAkkaConfigurator implements RouterConfigurator {
 
         public RouterConfig getConfig() {
             return new RoundRobinRouter(4);
@@ -80,6 +83,10 @@ public class Pi {
 
         public Class<? extends CDIActor> actorOf() {
             return Worker.class;
+        }
+        
+        public void configure(@Observes SystemConfigurationEvent evt) {
+            evt.errorOnActorInjection(true);
         }
     }
     

@@ -1,5 +1,6 @@
-package com.mathieuancelin.actors.cdi;
+package com.mathieuancelin.actors.cdi.test;
 
+import com.mathieuancelin.actors.cdi.CDIActor;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
