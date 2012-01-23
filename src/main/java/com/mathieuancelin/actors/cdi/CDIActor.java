@@ -1,17 +1,21 @@
 package com.mathieuancelin.actors.cdi;
 
 import akka.actor.*;
+import com.mathieuancelin.actors.cdi.ActorsExtension.Tuple;
 import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.FromActorEngine;
 import com.mathieuancelin.actors.cdi.api.ToActor;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.annotation.PostConstruct;
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Instance;
+import javax.enterprise.inject.spi.AnnotatedMethod;
+import javax.enterprise.inject.spi.ObserverMethod;
 import javax.enterprise.util.AnnotationLiteral;
 import javax.inject.Inject;
 import scala.Option;
@@ -29,20 +33,8 @@ public abstract class CDIActor {
     private ActorRef delegateRef;
         
     private String name ;
-        
-    private Class<?> clazz;
-    
-    private final Set<Method> observers = new HashSet<Method>();
-
+            
     public CDIActor() {
-        this.clazz = getClass();
-        for (Method m : clazz.getDeclaredMethods()) {
-            if (m.getParameterTypes().length == 1 && m.getParameterAnnotations()[0].length >= 1) {
-                if (m.getParameterAnnotations()[0][0].annotationType().equals(Observes.class)) {
-                    observers.add(m);
-                }
-            }
-        }
         if (getClass().isAnnotationPresent(ActorConfig.class)) {
             name = getClass().getAnnotation(ActorConfig.class).value();
             if (name.equals(ActorConfig.DEFAULT_VALUE)) {
@@ -106,6 +98,8 @@ public abstract class CDIActor {
         private final String name;
         
         private final CDIActor actor;
+        
+        private final List<Tuple<AnnotatedMethod, ObserverMethod>> observers;
 
         public DelegateActor(Event<Object> events, String name, CDIActor actor) {
             this.events = events;
@@ -115,6 +109,7 @@ public abstract class CDIActor {
                 this.name = name;
             }
             this.actor = actor;
+            this.observers = ActorsExtension.observers.get(actor.getClass());
         }
 
         @Override
@@ -124,18 +119,33 @@ public abstract class CDIActor {
 //                    .select(new ToActorAnnotation(name))
 //                    .select(clazz).fire(get(o, clazz));
             
-            // NASTY WORKAROUND. Not proud of it !!!!!
-            for (Method m : actor.observers) {
-                if (m.getParameterTypes()[0].isAssignableFrom(clazz)) {
-                    try {
-                        m.setAccessible(true);
-                        m.invoke(actor, o);
-                    } catch (Throwable ex) {
-                        ex.printStackTrace();
-                    }
+            // NASTY WORKAROUND. Not proud of it !!!!!   
+            for (Tuple<AnnotatedMethod, ObserverMethod> m : observers) {
+                if (typeMatch(((Class<?>) m._2.getObservedType()), clazz)) {
+                    invoke(m._1.getJavaMember(), actor, o);
                 }
-            }            
+            }
         }  
+            
+        private static boolean typeMatch(Class<?> from, Class<?> to) {
+            return from.isAssignableFrom(to);
+        }
+        
+        private static void invoke(Method m, Object on, Object with) {
+            boolean accessible = m.isAccessible();
+            try {
+                if (!accessible) {
+                    m.setAccessible(true);
+                }
+                m.invoke(on, with);
+            } catch (Throwable ex) {
+                ex.printStackTrace();
+            } finally {
+                if (!accessible) {
+                    m.setAccessible(false);
+                }
+            }
+        }
 
         @Override
         public void postStop() {

@@ -5,8 +5,7 @@ import com.mathieuancelin.actors.cdi.api.ActorConfig;
 import com.mathieuancelin.actors.cdi.api.RouterConfigurator;
 import com.mathieuancelin.actors.cdi.api.SystemConfigurationEvent;
 import com.typesafe.config.Config;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.*;
@@ -16,10 +15,11 @@ public class ActorsExtension implements Extension {
 
     static Set<Class<? extends CDIActor>> classes = new HashSet<Class<? extends CDIActor>>();
     static Set<Class<? extends RouterConfigurator>> routers = new HashSet<Class<? extends RouterConfigurator>>();
+    static Map<Class<?>, List<Tuple<AnnotatedMethod, ObserverMethod>>> observers = new HashMap<Class<?>, List<Tuple<AnnotatedMethod, ObserverMethod>>>();
     static String systemName = "default";
     static Config systemConfig;
     boolean enforceActorInjection = false;
-    
+        
     Set<InjectionPoint> ipts = new HashSet<InjectionPoint>();
 
     public void observesInjectionTarget(@Observes ProcessInjectionTarget<?> evt) {
@@ -71,6 +71,10 @@ public class ActorsExtension implements Extension {
                     classes.add(evt.getAnnotatedMethod().getDeclaringType().getJavaClass());
                 }
                 evt.getObserverMethod().getObservedQualifiers().add(new CDIActor.ToActorAnnotation(name));
+                if (!observers.containsKey(beanClass)) {
+                    observers.put(beanClass, new ArrayList<Tuple<AnnotatedMethod, ObserverMethod>>());
+                }
+                observers.get(beanClass).add(new Tuple<AnnotatedMethod, ObserverMethod>(evt.getAnnotatedMethod(), evt.getObserverMethod()));
             } else {
                 evt.addDefinitionError(new Throwable("You have to annotate your actors with @ActorConfig"));
             }
@@ -92,6 +96,42 @@ public class ActorsExtension implements Extension {
         Class<?> beanClass = evt.getAnnotatedType().getJavaClass();
         if (beanClass.getName().startsWith("akka.")) {
             evt.veto();
+        }
+    }
+    
+    public static class Tuple<A, B> {
+        public final A _1;
+        public final B _2;
+
+        public Tuple(A _1, B _2) {
+            this._1 = _1;
+            this._2 = _2;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Tuple<A, B> other = (Tuple<A, B>) obj;
+            if (this._1 != other._1 && (this._1 == null || !this._1.equals(other._1))) {
+                return false;
+            }
+            if (this._2 != other._2 && (this._2 == null || !this._2.equals(other._2))) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 47 * hash + (this._1 != null ? this._1.hashCode() : 0);
+            hash = 47 * hash + (this._2 != null ? this._2.hashCode() : 0);
+            return hash;
         }
     }
 }
